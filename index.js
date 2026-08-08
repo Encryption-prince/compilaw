@@ -2,6 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const { DPDP_RULES } = require("./rules");
+const { runQuestionnaire } = require("./questionnaire");
 
 console.log("CompiLaw scanner starting...");
 
@@ -79,9 +80,12 @@ const targetFolder = process.argv[2] || "./sample-code";
 
 console.log(`Scanning folder: ${targetFolder}\n`);
 
+const context = runQuestionnaire();
+console.log("\nStarting scan with context:", context, "\n");
+
 walk(targetFolder);
 
-function buildReport(findings) {
+function buildReport(findings, context) {
     const grouped = {};
 
     for (const finding of findings) {
@@ -103,6 +107,16 @@ function buildReport(findings) {
         }
     }
     report += `Severity breakdown — Critical: ${severityCounts.Critical}, High: ${severityCounts.High}, Medium: ${severityCounts.Medium}, Low: ${severityCounts.Low}\n\n`;
+
+    if (context.handlesMinors) {
+        report += "⚠ NOTE: You indicated this product handles minors' data. Every finding below involving names, DOB, or contact fields should be reviewed against DPDP's parental-consent requirements as a priority.\n\n";
+    }
+    if (context.sector === "fintech") {
+        report += "⚠ NOTE: Fintech sector selected — Financial/bank field findings may also be subject to RBI data-localisation and security rules in addition to DPDP.\n\n";
+    }
+    if (context.sector === "health") {
+        report += "⚠ NOTE: Health sector selected — Health field findings should be treated as highly sensitive even though DPDP doesn't formally create a separate sensitive-data category.\n\n";
+    }
 
     for (const category in grouped) {
         const items = grouped[category];
@@ -131,7 +145,7 @@ function buildReport(findings) {
 }
 
 
-const reportText = buildReport(findings);
+const reportText = buildReport(findings, context);
 console.log(reportText);
 
 fs.writeFileSync("./compilaw-report.txt", reportText);
