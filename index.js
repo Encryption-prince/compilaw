@@ -4,6 +4,8 @@ const path = require("path");
 const { DPDP_RULES } = require("./rules");
 const { runQuestionnaire } = require("./questionnaire");
 const { scanDependencies } = require("./dependency-scanner");
+const { PII_PATTERNS } = require("./patterns");
+const { scanJSFileWithAST } = require("./ast-scanner");
 
 console.log("CompiLaw scanner starting...");
 if (process.argv[2] === "--help" || process.argv[2] === "-h") {
@@ -27,20 +29,6 @@ This tool is a technical aid, not legal advice.
     process.exit(0);
 }
 
-// Each entry: a human-readable label, and a regex that matches related code.
-const PII_PATTERNS = [
-    { label: "Email field", regex: /email/i },
-    { label: "Phone number field", regex: /phone|mobile/i },
-    { label: "Full name field", regex: /fullname|full_name|username/i },
-    { label: "Date of birth field", regex: /dob|dateofbirth|date_of_birth/i },
-    { label: "Address field", regex: /address/i },
-    { label: "Government ID field", regex: /aadhaar|aadhar|pan\b|passport/i },
-    { label: "Password field", regex: /password|passwd/i },
-    { label: "Financial/bank field", regex: /bankaccount|ifsc|accountnumber|cardnumber/i },
-    { label: "Health field", regex: /health|medical|diagnosis/i },
-    { label: "Biometric field", regex: /biometric|fingerprint|faceid/i },
-    { label: "Location field", regex: /latitude|longitude|geolocation/i },
-];
 
 const findings = [];
 
@@ -48,7 +36,7 @@ const EXCLUDE_PATTERNS = [
     /console\.(log|error|warn|info)/i,
 ];
 
-function scanFileForPII(filePath, content) {
+function scanPythonFileWithRegex(filePath, content) {
     const lines = content.split("\n");
 
     lines.forEach((lineText, index) => {
@@ -101,7 +89,13 @@ function walk(dirPath) {
 
             try {
                 const content = fs.readFileSync(fullPath, "utf-8");
-                scanFileForPII(fullPath, content);
+
+                if (ext === ".py") {
+                    scanPythonFileWithRegex(fullPath, content);
+                } else {
+                    const astFindings = scanJSFileWithAST(fullPath, content);
+                    findings.push(...astFindings);
+                }
             } catch (err) {
                 console.warn(`Skipping (could not read): ${fullPath}`);
             }

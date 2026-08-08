@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-08T20:29:39.987Z",
+  "generatedAt": "2026-08-08T20:44:21.279Z",
   "scannedFolder": "./sample-code",
   "businessContext": {
-    "userLocation": "india",
-    "sector": "general",
+    "userLocation": "inida",
+    "sector": "health",
     "handlesMinors": false
   },
   "totalFindings": 7,
@@ -18,7 +18,7 @@
       "file": "sample-code\\models\\profile.js",
       "line": 3,
       "category": "Full name field",
-      "snippet": "fullName: \"\",",
+      "snippet": "fullName",
       "rule": {
         "citation": "DPDP Act 2023, Section 4 (Grounds for processing)",
         "ruleText": "Personal data may only be processed for a lawful purpose with consent (Section 5) or a legitimate use listed in Section 7.",
@@ -30,7 +30,7 @@
       "file": "sample-code\\models\\profile.js",
       "line": 4,
       "category": "Date of birth field",
-      "snippet": "dateOfBirth: \"\",",
+      "snippet": "dateOfBirth",
       "rule": {
         "citation": "DPDP Act 2023, Section 9 (Processing of children's data)",
         "ruleText": "Section 9 imposes special obligations — including verifiable parental consent — where a Data Fiduciary processes a child's personal data.",
@@ -42,7 +42,7 @@
       "file": "sample-code\\models\\profile.js",
       "line": 5,
       "category": "Address field",
-      "snippet": "address: \"\",",
+      "snippet": "address",
       "rule": {
         "citation": "DPDP Act 2023, Section 8(5) (Reasonable security safeguards)",
         "ruleText": "Data Fiduciaries must implement reasonable security safeguards to prevent a personal data breach.",
@@ -54,7 +54,7 @@
       "file": "sample-code\\user.js",
       "line": 2,
       "category": "Email field",
-      "snippet": "const userEmail = \"test@example.com\";",
+      "snippet": "userEmail",
       "rule": {
         "citation": "DPDP Act 2023, Section 5 (Notice and consent)",
         "ruleText": "A Data Fiduciary must give clear notice and obtain consent before collecting personal data, describing what is collected and why.",
@@ -66,7 +66,7 @@
       "file": "sample-code\\user.js",
       "line": 3,
       "category": "Phone number field",
-      "snippet": "const userPhone = \"9876543210\";",
+      "snippet": "userPhone",
       "rule": {
         "citation": "DPDP Act 2023, Section 5 (Notice and consent)",
         "ruleText": "Same notice-and-consent requirement as above — applies to any directly identifying contact data.",
@@ -78,7 +78,7 @@
       "file": "sample-code\\user.js",
       "line": 5,
       "category": "Email field",
-      "snippet": "function saveUser(name, email, phone) {",
+      "snippet": "email",
       "rule": {
         "citation": "DPDP Act 2023, Section 5 (Notice and consent)",
         "ruleText": "A Data Fiduciary must give clear notice and obtain consent before collecting personal data, describing what is collected and why.",
@@ -90,7 +90,7 @@
       "file": "sample-code\\user.js",
       "line": 5,
       "category": "Phone number field",
-      "snippet": "function saveUser(name, email, phone) {",
+      "snippet": "phone",
       "rule": {
         "citation": "DPDP Act 2023, Section 5 (Notice and consent)",
         "ruleText": "Same notice-and-consent requirement as above — applies to any directly identifying contact data.",
