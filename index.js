@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { DPDP_RULES } = require("./rules");
 const { runQuestionnaire } = require("./questionnaire");
+const { scanDependencies } = require("./dependency-scanner");
 
 console.log("CompiLaw scanner starting...");
 
@@ -85,7 +86,9 @@ console.log("\nStarting scan with context:", context, "\n");
 
 walk(targetFolder);
 
-function buildReport(findings, context) {
+const dependencyResults = scanDependencies();
+
+function buildReport(findings, context, dependencyResults) {
     const grouped = {};
 
     for (const finding of findings) {
@@ -140,12 +143,24 @@ function buildReport(findings, context) {
         }
         report += "\n";
     }
+    report += "DEPENDENCY & LICENSE SCAN\n";
+    report += "=====================\n\n";
+
+    if (dependencyResults.length === 0) {
+        report += "No external dependencies found.\n\n";
+    } else {
+        for (const dep of dependencyResults) {
+            const flag = dep.risky ? "⚠ RISKY LICENSE" : "OK";
+            report += `  ${dep.name}@${dep.version} — License: ${dep.license} — ${flag}\n`;
+        }
+        report += "\n";
+    }
 
     return report;
 }
 
 
-const reportText = buildReport(findings, context);
+const reportText = buildReport(findings, context, dependencyResults);
 console.log(reportText);
 
 fs.writeFileSync("./compilaw-report.txt", reportText);
