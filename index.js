@@ -13,15 +13,27 @@ const PII_PATTERNS = [
     { label: "Date of birth field", regex: /dob|dateofbirth|date_of_birth/i },
     { label: "Address field", regex: /address/i },
     { label: "Government ID field", regex: /aadhaar|aadhar|pan\b|passport/i },
+    { label: "Password field", regex: /password|passwd/i },
+    { label: "Financial/bank field", regex: /bankaccount|ifsc|accountnumber|cardnumber/i },
+    { label: "Health field", regex: /health|medical|diagnosis/i },
+    { label: "Biometric field", regex: /biometric|fingerprint|faceid/i },
+    { label: "Location field", regex: /latitude|longitude|geolocation/i },
 ];
 
 const findings = [];
+
+const EXCLUDE_PATTERNS = [
+    /console\.(log|error|warn|info)/i,
+];
 
 function scanFileForPII(filePath, content) {
     const lines = content.split("\n");
 
     lines.forEach((lineText, index) => {
         const lineNumber = index + 1;
+
+        const isExcluded = EXCLUDE_PATTERNS.some((pattern) => pattern.test(lineText));
+        if (isExcluded) return;
 
         for (const pattern of PII_PATTERNS) {
             if (pattern.regex.test(lineText)) {
@@ -36,16 +48,27 @@ function scanFileForPII(filePath, content) {
     });
 }
 
+const ALLOWED_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".py"];
+const SKIP_FOLDERS = ["node_modules", ".git"];
+
 function walk(dirPath) {
     const entries = fs.readdirSync(dirPath);
 
     for (const entry of entries) {
+        if (SKIP_FOLDERS.includes(entry)) {
+            continue;
+        }
+
         const fullPath = path.join(dirPath, entry);
         const stats = fs.statSync(fullPath);
 
         if (stats.isDirectory()) {
             walk(fullPath);
         } else {
+            const ext = path.extname(fullPath);
+            if (!ALLOWED_EXTENSIONS.includes(ext)) {
+                continue;
+            }
             const content = fs.readFileSync(fullPath, "utf-8");
             scanFileForPII(fullPath, content);
         }
@@ -71,6 +94,15 @@ function buildReport(findings) {
     let report = "COMPILAW SCAN REPORT\n";
     report += "=====================\n\n";
     report += `Total findings: ${findings.length}\n\n`;
+
+    const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+    for (const category in grouped) {
+        const rule = DPDP_RULES[category];
+        if (rule) {
+            severityCounts[rule.severity] += grouped[category].length;
+        }
+    }
+    report += `Severity breakdown — Critical: ${severityCounts.Critical}, High: ${severityCounts.High}, Medium: ${severityCounts.Medium}, Low: ${severityCounts.Low}\n\n`;
 
     for (const category in grouped) {
         const items = grouped[category];
