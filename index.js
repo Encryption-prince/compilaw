@@ -6,6 +6,26 @@ const { runQuestionnaire } = require("./questionnaire");
 const { scanDependencies } = require("./dependency-scanner");
 
 console.log("CompiLaw scanner starting...");
+if (process.argv[2] === "--help" || process.argv[2] === "-h") {
+    console.log(`
+CompiLaw — DPDP compliance gap scanner (V1)
+
+Usage:
+  compilaw <folder-path>
+
+Example:
+  compilaw ./my-project
+
+What it does:
+  Scans JS/TS/Python files in the given folder for PII-shaped fields,
+  matches findings against a simplified DPDP Act 2023 rules knowledge base,
+  scans package.json dependencies for risky open-source licenses,
+  and writes a report to compilaw-report.txt and compilaw-report.json.
+
+This tool is a technical aid, not legal advice.
+`);
+    process.exit(0);
+}
 
 // Each entry: a human-readable label, and a regex that matches related code.
 const PII_PATTERNS = [
@@ -99,7 +119,9 @@ function buildReport(findings, context, dependencyResults) {
     }
 
     let report = "COMPILAW SCAN REPORT\n";
-    report += "=====================\n\n";
+    report += "=====================\n";
+    report += "DISCLAIMER: This report is a technical aid, not legal advice. Citations should be verified\n";
+    report += "against the official DPDP Act/Rules text and reviewed by a qualified lawyer before acting.\n\n";
     report += `Total findings: ${findings.length}\n\n`;
 
     const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
@@ -110,6 +132,9 @@ function buildReport(findings, context, dependencyResults) {
         }
     }
     report += `Severity breakdown — Critical: ${severityCounts.Critical}, High: ${severityCounts.High}, Medium: ${severityCounts.Medium}, Low: ${severityCounts.Low}\n\n`;
+
+    const breachRule = DPDP_RULES["Breach notification (general reminder)"];
+    report += `REMINDER — ${breachRule.citation}: ${breachRule.ruleText}\n\n`;
 
     if (context.handlesMinors) {
         report += "⚠ NOTE: You indicated this product handles minors' data. Every finding below involving names, DOB, or contact fields should be reviewed against DPDP's parental-consent requirements as a priority.\n\n";
@@ -165,3 +190,27 @@ console.log(reportText);
 
 fs.writeFileSync("./compilaw-report.txt", reportText);
 console.log("Report saved to compilaw-report.txt");
+
+const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+for (const finding of findings) {
+    const rule = DPDP_RULES[finding.category];
+    if (rule) {
+        severityCounts[rule.severity] += 1;
+    }
+}
+
+const reportData = {
+    generatedAt: new Date().toISOString(),
+    scannedFolder: targetFolder,
+    businessContext: context,
+    totalFindings: findings.length,
+    severityBreakdown: severityCounts,
+    findings: findings.map((f) => ({
+        ...f,
+        rule: DPDP_RULES[f.category] || null,
+    })),
+    dependencies: dependencyResults,
+};
+
+fs.writeFileSync("./compilaw-report.json", JSON.stringify(reportData, null, 2));
+console.log("Machine-readable report saved to compilaw-report.json");

@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-08-08T20:16:25.539Z",
+  "scannedFolder": "./sample-code",
+  "businessContext": {
+    "userLocation": "india",
+    "sector": "other",
+    "handlesMinors": false
+  },
+  "totalFindings": 7,
+  "severityBreakdown": {
+    "Critical": 0,
+    "High": 5,
+    "Medium": 2,
+    "Low": 0
+  },
+  "findings": [
+    {
+      "file": "sample-code\\models\\profile.js",
+      "line": 3,
+      "category": "Full name field",
+      "snippet": "fullName: \"\",",
+      "rule": {
+        "citation": "DPDP Act 2023, Section 4 (Grounds for processing)",
+        "ruleText": "Personal data may only be processed for a lawful purpose with consent (Section 5) or a legitimate use listed in Section 7.",
+        "severity": "Medium",
+        "remediation": "Verify there's a documented lawful basis (consent or a Section 7 legitimate use) for storing full names."
+      }
+    },
+    {
+      "file": "sample-code\\models\\profile.js",
+      "line": 4,
+      "category": "Date of birth field",
+      "snippet": "dateOfBirth: \"\",",
+      "rule": {
+        "citation": "DPDP Act 2023, Section 9 (Processing of children's data)",
+        "ruleText": "Section 9 imposes special obligations — including verifiable parental consent — where a Data Fiduciary processes a child's personal data.",
+        "severity": "High",
+        "remediation": "Check whether age-verification and parental consent flows exist wherever this field feeds into onboarding."
+      }
+    },
+    {
+      "file": "sample-code\\models\\profile.js",
+      "line": 5,
+      "category": "Address field",
+      "snippet": "address: \"\",",
+      "rule": {
+        "citation": "DPDP Act 2023, Section 8(5) (Reasonable security safeguards)",
+        "ruleText": "Data Fiduciaries must implement reasonable security safeguards to prevent a personal data breach.",
+        "severity": "Medium",
+        "remediation": "Confirm this field is encrypted at rest and access-controlled."
+      }
+    },
+    {
+      "file": "sample-code\\user.js",
+      "line": 2,
+      "category": "Email field",
+      "snippet": "const userEmail = \"test@example.com\";",
+      "rule": {
+        "citation": "DPDP Act 2023, Section 5 (Notice and consent)",
+        "ruleText": "A Data Fiduciary must give clear notice and obtain consent before collecting personal data, describing what is collected and why.",
+        "severity": "High",
+        "remediation": "Confirm a consent/notice mechanism exists before this email field is collected."
+      }
+    },
+    {
+      "file": "sample-code\\user.js",
+      "line": 3,
+      "category": "Phone number field",
+      "snippet": "const userPhone = \"9876543210\";",
+      "rule": {
+        "citation": "DPDP Act 2023, Section 5 (Notice and consent)",
+        "ruleText": "Same notice-and-consent requirement as above — applies to any directly identifying contact data.",
+        "severity": "High",
+        "remediation": "Confirm notice/consent covers phone number collection specifically."
+      }
+    },
+    {
+      "file": "sample-code\\user.js",
+      "line": 5,
+      "category": "Email field",
+      "snippet": "function saveUser(name, email, phone) {",
+      "rule": {
+        "citation": "DPDP Act 2023, Section 5 (Notice and consent)",
+        "ruleText": "A Data Fiduciary must give clear notice and obtain consent before collecting personal data, describing what is collected and why.",
+        "severity": "High",
+        "remediation": "Confirm a consent/notice mechanism exists before this email field is collected."
+      }
+    },
+    {
+      "file": "sample-code\\user.js",
+      "line": 5,
+      "category": "Phone number field",
+      "snippet": "function saveUser(name, email, phone) {",
+      "rule": {
+        "citation": "DPDP Act 2023, Section 5 (Notice and consent)",
+        "ruleText": "Same notice-and-consent requirement as above — applies to any directly identifying contact data.",
+        "severity": "High",
+        "remediation": "Confirm notice/consent covers phone number collection specifically."
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "readline-sync",
+      "version": "1.4.10",
+      "license": "MIT",
+      "risky": false
+    }
+  ]
+}
