@@ -82,7 +82,14 @@ function walk(dirPath) {
         }
 
         const fullPath = path.join(dirPath, entry);
-        const stats = fs.statSync(fullPath);
+
+        let stats;
+        try {
+            stats = fs.statSync(fullPath);
+        } catch (err) {
+            console.warn(`Skipping (could not read): ${fullPath}`);
+            continue;
+        }
 
         if (stats.isDirectory()) {
             walk(fullPath);
@@ -91,13 +98,30 @@ function walk(dirPath) {
             if (!ALLOWED_EXTENSIONS.includes(ext)) {
                 continue;
             }
-            const content = fs.readFileSync(fullPath, "utf-8");
-            scanFileForPII(fullPath, content);
+
+            try {
+                const content = fs.readFileSync(fullPath, "utf-8");
+                scanFileForPII(fullPath, content);
+            } catch (err) {
+                console.warn(`Skipping (could not read): ${fullPath}`);
+            }
         }
     }
 }
 
 const targetFolder = process.argv[2] || "./sample-code";
+
+if (!fs.existsSync(targetFolder)) {
+    console.error(`Error: The folder "${targetFolder}" does not exist.`);
+    console.error(`Tip: run "compilaw --help" for usage instructions.`);
+    process.exit(1);
+}
+
+const folderStats = fs.statSync(targetFolder);
+if (!folderStats.isDirectory()) {
+    console.error(`Error: "${targetFolder}" is a file, not a folder. Please point compilaw at a directory.`);
+    process.exit(1);
+}
 
 console.log(`Scanning folder: ${targetFolder}\n`);
 
@@ -106,7 +130,7 @@ console.log("\nStarting scan with context:", context, "\n");
 
 walk(targetFolder);
 
-const dependencyResults = scanDependencies();
+const dependencyResults = scanDependencies(targetFolder);
 
 function buildReport(findings, context, dependencyResults) {
     const grouped = {};

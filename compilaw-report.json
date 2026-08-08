@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-08T20:16:25.539Z",
+  "generatedAt": "2026-08-08T20:29:39.987Z",
   "scannedFolder": "./sample-code",
   "businessContext": {
     "userLocation": "india",
-    "sector": "other",
+    "sector": "general",
     "handlesMinors": false
   },
   "totalFindings": 7,
@@ -99,12 +99,5 @@
       }
     }
   ],
-  "dependencies": [
-    {
-      "name": "readline-sync",
-      "version": "1.4.10",
-      "license": "MIT",
-      "risky": false
-    }
-  ]
+  "dependencies": []
 }

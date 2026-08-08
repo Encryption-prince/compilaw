@@ -3,9 +3,22 @@ const path = require("path");
 
 const RISKY_LICENSES = ["GPL-2.0", "GPL-3.0", "AGPL-3.0", "LGPL-2.1", "LGPL-3.0"];
 
-function scanDependencies() {
-    const packageJsonPath = path.join(".", "package.json");
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+function scanDependencies(targetFolder) {
+    const packageJsonPath = path.join(targetFolder, "package.json");
+    // ...same as above, just using targetFolder instead of "."
+
+    if (!fs.existsSync(packageJsonPath)) {
+        console.warn("No package.json found in current folder — skipping dependency scan.");
+        return [];
+    }
+
+    let packageJson;
+    try {
+        packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+    } catch (err) {
+        console.warn("package.json exists but could not be parsed — skipping dependency scan.");
+        return [];
+    }
 
     const dependencies = packageJson.dependencies || {};
     const results = [];

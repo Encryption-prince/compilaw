@@ -10,17 +10,17 @@ official DPDP Act/Rules text and reviewed by a qualified lawyer.
 
 ## Install (local development)
 
-\`\`\`bash
+```bash
 npm install
 npm link
-\`\`\`
+```
 
 ## Usage
 
-\`\`\`bash
+```bash
 compilaw <folder-path>
 compilaw --help
-\`\`\`
+```
 
 ## What it does
 
