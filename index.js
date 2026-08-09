@@ -1,73 +1,107 @@
 #!/usr/bin/env node
 const fs = require("fs");
 const path = require("path");
+const chalk = require("chalk");
+
 const { DPDP_RULES } = require("./rules");
 const { runQuestionnaire } = require("./questionnaire");
 const { scanDependencies } = require("./dependency-scanner");
-const { PII_PATTERNS } = require("./patterns");
+const { matchPattern } = require("./patterns");
 const { scanJSFileWithAST } = require("./ast-scanner");
+const { scanPythonFileWithAST, PYTHON_CMD } = require("./python-ast-scanner");
+const { loadConfig } = require("./config-loader");
 
 console.log("CompiLaw scanner starting...");
+
 if (process.argv[2] === "--help" || process.argv[2] === "-h") {
     console.log(`
 CompiLaw — DPDP compliance gap scanner (V1)
 
 Usage:
-  compilaw <folder-path>
+  compilaw <folder-path> [flags]
+
+Flags:
+  --install-deps   Runs "npm install" in the target folder first, to get accurate
+                    dependency license data. SECURITY NOTE: only use this on codebases
+                    you trust — it executes that project's install scripts.
 
 Example:
   compilaw ./my-project
+  compilaw ./my-project --install-deps
+
+Config:
+  Place a .compilawrc.json in the target folder to customize scanning:
+    {
+      "ignoreFolders": ["scripts", "legacy"],
+      "ignoreCategories": ["Address field"]
+    }
 
 What it does:
-  Scans JS/TS/Python files in the given folder for PII-shaped fields,
-  matches findings against a simplified DPDP Act 2023 rules knowledge base,
-  scans package.json dependencies for risky open-source licenses,
-  and writes a report to compilaw-report.txt and compilaw-report.json.
+  Scans JS/TS/Python files for PII-shaped fields and data-flow risk (PII
+  passed into function/API calls), matches findings against a simplified
+  DPDP Act 2023 rules knowledge base, scans dependencies for risky
+  open-source licenses, and writes compilaw-report.txt and .json.
 
 This tool is a technical aid, not legal advice.
 `);
     process.exit(0);
 }
 
+if (!PYTHON_CMD) {
+    console.warn("Note: Python not found on PATH — .py files will use regex fallback instead of AST.");
+}
+
+const targetFolder = process.argv[2] || "./sample-code";
+const installDeps = process.argv.includes("--install-deps");
+
+if (!fs.existsSync(targetFolder)) {
+    console.error(`Error: The folder "${targetFolder}" does not exist.`);
+    console.error(`Tip: run "compilaw --help" for usage instructions.`);
+    process.exit(1);
+}
+
+const folderStats = fs.statSync(targetFolder);
+if (!folderStats.isDirectory()) {
+    console.error(`Error: "${targetFolder}" is a file, not a folder.`);
+    process.exit(1);
+}
+
+const config = loadConfig(targetFolder);
+
+const ALLOWED_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".py"];
+const SKIP_FOLDERS = ["node_modules", ".git", ...config.ignoreFolders];
+const EXCLUDE_PATTERNS = [/console\.(log|error|warn|info)/i];
 
 const findings = [];
-
-const EXCLUDE_PATTERNS = [
-    /console\.(log|error|warn|info)/i,
-];
+let filesScanned = 0;
 
 function scanPythonFileWithRegex(filePath, content) {
     const lines = content.split("\n");
 
     lines.forEach((lineText, index) => {
         const lineNumber = index + 1;
-
         const isExcluded = EXCLUDE_PATTERNS.some((pattern) => pattern.test(lineText));
         if (isExcluded) return;
 
-        for (const pattern of PII_PATTERNS) {
-            if (pattern.regex.test(lineText)) {
-                findings.push({
-                    file: filePath,
-                    line: lineNumber,
-                    category: pattern.label,
-                    snippet: lineText.trim(),
-                });
-            }
+        const pattern = matchPattern(lineText);
+        if (pattern) {
+            findings.push({
+                file: filePath,
+                line: lineNumber,
+                category: pattern.label,
+                snippet: lineText.trim(),
+                confidence: (pattern.confidence || 0.7) * 0.8,
+                type: "declaration",
+            });
         }
     });
 }
-
-const ALLOWED_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".py"];
-const SKIP_FOLDERS = ["node_modules", ".git"];
 
 function walk(dirPath) {
     const entries = fs.readdirSync(dirPath);
 
     for (const entry of entries) {
-        if (SKIP_FOLDERS.includes(entry)) {
-            continue;
-        }
+        if (SKIP_FOLDERS.includes(entry)) continue;
 
         const fullPath = path.join(dirPath, entry);
 
@@ -83,16 +117,22 @@ function walk(dirPath) {
             walk(fullPath);
         } else {
             const ext = path.extname(fullPath);
-            if (!ALLOWED_EXTENSIONS.includes(ext)) {
-                continue;
-            }
+            if (!ALLOWED_EXTENSIONS.includes(ext)) continue;
 
             try {
-                const content = fs.readFileSync(fullPath, "utf-8");
+                filesScanned++;
+                process.stdout.write(`\rFiles scanned: ${filesScanned}`);
 
                 if (ext === ".py") {
-                    scanPythonFileWithRegex(fullPath, content);
+                    const astResult = scanPythonFileWithAST(fullPath);
+                    if (astResult !== null) {
+                        findings.push(...astResult);
+                    } else {
+                        const content = fs.readFileSync(fullPath, "utf-8");
+                        scanPythonFileWithRegex(fullPath, content);
+                    }
                 } else {
+                    const content = fs.readFileSync(fullPath, "utf-8");
                     const astFindings = scanJSFileWithAST(fullPath, content);
                     findings.push(...astFindings);
                 }
@@ -103,36 +143,23 @@ function walk(dirPath) {
     }
 }
 
-const targetFolder = process.argv[2] || "./sample-code";
-
-if (!fs.existsSync(targetFolder)) {
-    console.error(`Error: The folder "${targetFolder}" does not exist.`);
-    console.error(`Tip: run "compilaw --help" for usage instructions.`);
-    process.exit(1);
-}
-
-const folderStats = fs.statSync(targetFolder);
-if (!folderStats.isDirectory()) {
-    console.error(`Error: "${targetFolder}" is a file, not a folder. Please point compilaw at a directory.`);
-    process.exit(1);
-}
-
 console.log(`Scanning folder: ${targetFolder}\n`);
 
 const context = runQuestionnaire();
 console.log("\nStarting scan with context:", context, "\n");
 
 walk(targetFolder);
+console.log("\n");
 
-const dependencyResults = scanDependencies(targetFolder);
+const filteredFindings = findings.filter((f) => !config.ignoreCategories.includes(f.category));
+
+const dependencyResults = scanDependencies(targetFolder, installDeps);
 
 function buildReport(findings, context, dependencyResults) {
     const grouped = {};
 
     for (const finding of findings) {
-        if (!grouped[finding.category]) {
-            grouped[finding.category] = [];
-        }
+        if (!grouped[finding.category]) grouped[finding.category] = [];
         grouped[finding.category].push(finding);
     }
 
@@ -145,9 +172,7 @@ function buildReport(findings, context, dependencyResults) {
     const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
     for (const category in grouped) {
         const rule = DPDP_RULES[category];
-        if (rule) {
-            severityCounts[rule.severity] += grouped[category].length;
-        }
+        if (rule) severityCounts[rule.severity] += grouped[category].length;
     }
     report += `Severity breakdown — Critical: ${severityCounts.Critical}, High: ${severityCounts.High}, Medium: ${severityCounts.Medium}, Low: ${severityCounts.Low}\n\n`;
 
@@ -155,13 +180,13 @@ function buildReport(findings, context, dependencyResults) {
     report += `REMINDER — ${breachRule.citation}: ${breachRule.ruleText}\n\n`;
 
     if (context.handlesMinors) {
-        report += "⚠ NOTE: You indicated this product handles minors' data. Every finding below involving names, DOB, or contact fields should be reviewed against DPDP's parental-consent requirements as a priority.\n\n";
+        report += "⚠ NOTE: Minors' data indicated — review DPDP parental-consent requirements as a priority.\n\n";
     }
     if (context.sector === "fintech") {
-        report += "⚠ NOTE: Fintech sector selected — Financial/bank field findings may also be subject to RBI data-localisation and security rules in addition to DPDP.\n\n";
+        report += "⚠ NOTE: Fintech sector — Financial/bank findings may also face RBI data-localisation rules.\n\n";
     }
     if (context.sector === "health") {
-        report += "⚠ NOTE: Health sector selected — Health field findings should be treated as highly sensitive even though DPDP doesn't formally create a separate sensitive-data category.\n\n";
+        report += "⚠ NOTE: Health sector — Health findings should be treated as highly sensitive.\n\n";
     }
 
     for (const category in grouped) {
@@ -182,10 +207,18 @@ function buildReport(findings, context, dependencyResults) {
 
         report += `  Found at:\n`;
         for (const item of items) {
-            report += `    - ${item.file}:${item.line}  →  ${item.snippet}\n`;
+            const confidencePct = Math.round((item.confidence || 0.7) * 100);
+            const flowTag =
+                item.type === "data-flow"
+                    ? item.externalRisk
+                        ? " [DATA FLOW — possible external transmission]"
+                        : " [DATA FLOW — internal call]"
+                    : "";
+            report += `    - ${item.file}:${item.line}  →  ${item.snippet}  (confidence: ${confidencePct}%)${flowTag}\n`;
         }
         report += "\n";
     }
+
     report += "DEPENDENCY & LICENSE SCAN\n";
     report += "=====================\n\n";
 
@@ -202,33 +235,45 @@ function buildReport(findings, context, dependencyResults) {
     return report;
 }
 
-
-const reportText = buildReport(findings, context, dependencyResults);
+const reportText = buildReport(filteredFindings, context, dependencyResults);
 console.log(reportText);
+
+const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+for (const finding of filteredFindings) {
+    const rule = DPDP_RULES[finding.category];
+    if (rule) severityCounts[rule.severity] += 1;
+}
+
+console.log(chalk.bold("Severity summary:"));
+console.log(chalk.red.bold(`  Critical: ${severityCounts.Critical}`));
+console.log(chalk.red(`  High:     ${severityCounts.High}`));
+console.log(chalk.yellow(`  Medium:   ${severityCounts.Medium}`));
+console.log(chalk.gray(`  Low:      ${severityCounts.Low}`));
+console.log("");
 
 fs.writeFileSync("./compilaw-report.txt", reportText);
 console.log("Report saved to compilaw-report.txt");
-
-const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
-for (const finding of findings) {
-    const rule = DPDP_RULES[finding.category];
-    if (rule) {
-        severityCounts[rule.severity] += 1;
-    }
-}
 
 const reportData = {
     generatedAt: new Date().toISOString(),
     scannedFolder: targetFolder,
     businessContext: context,
-    totalFindings: findings.length,
+    totalFindings: filteredFindings.length,
     severityBreakdown: severityCounts,
-    findings: findings.map((f) => ({
-        ...f,
-        rule: DPDP_RULES[f.category] || null,
-    })),
+    findings: filteredFindings.map((f) => ({ ...f, rule: DPDP_RULES[f.category] || null })),
     dependencies: dependencyResults,
 };
 
 fs.writeFileSync("./compilaw-report.json", JSON.stringify(reportData, null, 2));
 console.log("Machine-readable report saved to compilaw-report.json");
+
+if (severityCounts.Critical > 0) {
+    console.log(chalk.red.bold("Result: FAIL — Critical severity findings detected."));
+    process.exit(1);
+} else if (severityCounts.High > 0) {
+    console.log(chalk.yellow.bold("Result: WARN — High severity findings detected."));
+    process.exit(0);
+} else {
+    console.log(chalk.green.bold("Result: PASS — no Critical findings."));
+    process.exit(0);
+}

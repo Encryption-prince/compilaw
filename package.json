@@ -7,7 +7,7 @@
     "compilaw": "./index.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +15,19 @@
   "dependencies": {
     "@babel/parser": "^8.0.4",
     "@babel/traverse": "^8.0.4",
+    "chalk": "^4.1.2",
     "readline-sync": "^1.4.10"
-  }
+  },
+  "files": [
+    "index.js",
+    "ast-scanner.js",
+    "python-ast-scanner.js",
+    "py_ast_helper.py",
+    "patterns.js",
+    "rules.js",
+    "questionnaire.js",
+    "dependency-scanner.js",
+    "config-loader.js",
+    "README.md"
+  ]
 }

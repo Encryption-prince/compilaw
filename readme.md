@@ -43,6 +43,11 @@ compilaw --help
 - The DPDP rules knowledge base is simplified and for learning purposes —
   not a substitute for legal review.
 - Currently supports JS/TS/Python file scanning only.
+- Dependency scanning reads the target folder's `package.json` directly; it does
+  not install missing packages, so license data for packages not already present
+  in that folder's `node_modules` may show as "unknown".
+- AST parsing may skip a small number of files using unusual or very new syntax
+  (a warning is printed for each skipped file; it does not stop the overall scan).
 
 ## Roadmap
 
