@@ -9,7 +9,7 @@
 **Automated legal & regulatory gap analysis for codebases.**
 *"Where compliance meets the codebase."*
 
-CompiLaw scans a software codebase, traces where personal data actually flows, and matches what it finds against India's DPDP Act 2023 — producing a severity-ranked gap report with citations, so early-stage teams can spot compliance risk before a lawyer or regulator does.
+CompiLaw scans a software codebase, traces where personal data actually flows, and matches what it finds against India's **DPDP Act 2023 and DPDP Rules 2025** — producing a severity-ranked gap report with citations, so early-stage teams can spot compliance risk before a lawyer or regulator does.
 
 > ⚠️ **This is not legal advice.** CompiLaw is a technical aid. Every citation should be verified against the official DPDP Act/Rules text and reviewed by a qualified lawyer before you act on it.
 
@@ -24,7 +24,7 @@ CompiLaw is two cooperating pieces:
 | **CLI scanner** | `/` (root) | Scans your codebase, detects PII fields and data flows, matches DPDP rules, outputs reports |
 | **Web dashboard** | `/compilaw-dashboard` | Local web UI to browse scan history, track remediation status, and export findings as CSV |
 
-The dashboard is optional — the CLI works completely standalone.
+The dashboard is to view the report in detail.
 
 ---
 
@@ -32,7 +32,7 @@ The dashboard is optional — the CLI works completely standalone.
 
 - **Real AST-based detection**, not just keyword search — parses actual code structure for JS/TS (via Babel) and Python (via Python's own `ast` module), so a variable named `ipAddress` isn't confused with someone's home address.
 - **Data-flow tracing** — detects not just *that* a PII field exists, but when it's passed into a function call that looks like it sends data externally (e.g. `analytics.track(userEmail)`), flagging that as a higher-priority finding.
-- **DPDP Act 2023 rule matching**, citations verified directly against the official Gazette text (Act + DPDP Rules 2025) — not paraphrased secondary sources.
+- **DPDP Act 2023 and DPDP Rules 2025 rule matching**, citations verified directly against the official Gazette text for both — not paraphrased secondary sources.
 - **Confidence scoring** on every finding, so you know which ones are near-certain vs. worth a second look.
 - **Business-context questionnaire** (user location, sector, minors' data) that adds targeted warnings — e.g. fintech-specific RBI flags, children's-data parental-consent reminders.
 - **Dependency & license scanning** — flags risky copyleft licenses (GPL/AGPL family) in your dependency tree; optional `--install-deps` flag for accurate license data on uninstalled packages (opt-in, since it executes the target project's install scripts).
@@ -40,6 +40,21 @@ The dashboard is optional — the CLI works completely standalone.
 - **CI-friendly** — meaningful exit codes (`1` on Critical findings) and colored terminal output.
 - **Dual output**: human-readable `.txt` report and machine-readable `.json`, or push straight to the dashboard with `--upload`.
 - **Dashboard**: scan history, per-finding status tracking (Open / Fixed / Accepted Risk / Needs Lawyer Review), CSV export for sharing with counsel. Runs locally, binds to `localhost` only — nothing leaves your machine.
+
+---
+
+## Understanding confidence scores
+
+Every finding carries a confidence score (0–100%) reflecting how likely it is to be a genuine compliance-relevant match, not a false positive.
+
+| Score range | Meaning | Example |
+|---|---|---|
+| **85–90%** | Very reliable — this category is rarely a false positive | `password`, `dateOfBirth`, `aadhaar` |
+| **70–84%** | Reliable, but some ambiguity possible | `email`, `phone`, `latitude` |
+| **55–69%** | Moderate — worth a manual look, more prone to false matches | `fullName`, `address` (network-address terms are filtered, but ambiguity remains), `health` |
+| **50–54%** | Data-flow findings (a PII variable passed into a function call) | These are heuristic — the tool guesses whether a call looks "external" (e.g. `analytics.track()`) based on the function name, not certainty |
+
+**Rule of thumb:** treat anything under 70% as a prompt to check the actual code, not as a confirmed issue. Regex-fallback findings (used when AST parsing isn't available, e.g. Python without an installed interpreter) are automatically scored 20% lower than the same category detected via AST, since fallback matching is line-based text search, not real code structure.
 
 ---
 
@@ -58,7 +73,7 @@ npm link
 
 This installs `compilaw` as a global command on your machine, backed by this project folder.
 
-### 2. Web dashboard (optional)
+### 2. Web dashboard
 
 ```bash
 cd compilaw-dashboard
@@ -92,3 +107,50 @@ compilaw --help
 ```bash
 compilaw ./my-project --upload
 ```
+
+---
+
+## Configuration
+
+Place a file named exactly `.compilawrc.json` **inside the folder you're scanning** (not in the CompiLaw project itself). CompiLaw reads it automatically — no flag needed.
+
+If no config file is found, CompiLaw scans everything with no exclusions (the default).
+
+### Full example
+
+```json
+{
+  "ignoreFolders": ["scripts", "legacy", "vendor"],
+  "ignoreCategories": ["Address field", "Health field"]
+}
+```
+
+### Options
+
+| Key | Type | Default | What it does |
+|---|---|---|---|
+| `ignoreFolders` | array of strings | `[]` | Folder *names* (not paths) to skip entirely during the scan, in addition to the always-skipped `node_modules` and `.git`. Matches by exact folder name at any depth. |
+| `ignoreCategories` | array of strings | `[]` | Finding categories to exclude from the final report entirely. Must exactly match a category name — see the full list below. |
+
+### Valid category names for `ignoreCategories`
+Email field
+Phone number field
+Full name field
+Date of birth field
+Address field
+Government ID field
+Password field
+Financial/bank field
+Health field
+Biometric field
+Location field
+
+---
+
+### Common setup mistakes
+
+- **Wrong location** — the file must be inside the *target* folder you're scanning (e.g. `./my-project/.compilawrc.json`), not inside the CompiLaw project folder itself.
+- **Hidden file-extension issue on Windows** — when creating the file, double check it's not accidentally saved as `.compilawrc.json.txt`. Windows Explorer sometimes hides extensions by default; VS Code's file explorer shows the true name and is the more reliable place to check.
+- **Invalid JSON** — if the file can't be parsed, CompiLaw prints a warning and falls back to scanning with no exclusions, rather than failing the whole scan.
+
+---
