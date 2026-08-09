@@ -1,2 +1,5 @@
 node_modules/
 compilaw-report.txt
+compilaw-report.json
+compilaw-dashboard/compilaw.db
+compilaw-dashboard/compilaw-report.json

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CompiLaw Dashboard</title>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    .finding { border: 1px solid #ccc; border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+    .Critical { border-left: 6px solid #b00020; }
+    .High { border-left: 6px solid #e65100; }
+    .Medium { border-left: 6px solid #f9a825; }
+    .Low { border-left: 6px solid #999; }
+    .report-row { cursor: pointer; padding: 10px; border-bottom: 1px solid #eee; }
+    .report-row:hover { background: #f5f5f5; }
+    #back { cursor: pointer; color: blue; }
+  </style>
+</head>
+<body>
+  <h1>CompiLaw Dashboard</h1>
+  <div id="app"></div>
+
+  <script>
+    const app = document.getElementById("app");
+
+    function showList() {
+      fetch("/api/reports").then(r => r.json()).then(reports => {
+        app.innerHTML = "<h2>Scan history</h2>" + reports.map(r => `
+          <div class="report-row" onclick="showReport(${r.id})">
+            #${r.id} — ${r.scanned_folder} — ${new Date(r.generated_at).toLocaleString()}
+            — ${r.total_findings} findings (Critical: ${r.critical}, High: ${r.high})
+          </div>
+        `).join("");
+      });
+    }
+
+    function showReport(id) {
+      fetch(`/api/reports/${id}`).then(r => r.json()).then(report => {
+        app.innerHTML = `
+          <div id="back" onclick="showList()">&larr; Back to history</div>
+          <h2>Report #${report.id} — ${report.scanned_folder}</h2>
+          <a href="/api/reports/${report.id}/csv" download>Download as CSV</a><br><br>
+          <p>Total: ${report.total_findings} | Critical: ${report.critical} | High: ${report.high} | Medium: ${report.medium} | Low: ${report.low}</p>
+          ${report.findings.map(f => `
+  <div class="finding ${f.severity}" id="finding-${f.id}">
+    <strong>${f.category}</strong> (${f.severity}) — ${f.file}:${f.line}
+    <br><code>${f.snippet}</code>
+    ${f.citation ? `<br><small>${f.citation}</small>` : ""}
+    <br>
+    <select onchange="updateStatus(${f.id}, this.value)">
+      <option value="Open" ${f.status === "Open" ? "selected" : ""}>Open</option>
+      <option value="Fixed" ${f.status === "Fixed" ? "selected" : ""}>Fixed</option>
+      <option value="Accepted Risk" ${f.status === "Accepted Risk" ? "selected" : ""}>Accepted Risk</option>
+      <option value="Needs Lawyer Review" ${f.status === "Needs Lawyer Review" ? "selected" : ""}>Needs Lawyer Review</option>
+    </select>
+  </div>
+`).join("")}
+        `;
+      });
+    }
+
+    function updateStatus(findingId, status) {
+  fetch(`/api/findings/${findingId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
+    showList();
+  </script>
+</body>
+</html>

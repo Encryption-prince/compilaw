@@ -267,13 +267,39 @@ const reportData = {
 fs.writeFileSync("./compilaw-report.json", JSON.stringify(reportData, null, 2));
 console.log("Machine-readable report saved to compilaw-report.json");
 
-if (severityCounts.Critical > 0) {
-    console.log(chalk.red.bold("Result: FAIL — Critical severity findings detected."));
-    process.exit(1);
-} else if (severityCounts.High > 0) {
-    console.log(chalk.yellow.bold("Result: WARN — High severity findings detected."));
-    process.exit(0);
+const dashboardUrl = process.argv.includes("--upload") ? "http://localhost:3000/api/report" : null;
+
+function exitWithResult() {
+    if (severityCounts.Critical > 0) {
+        console.log(chalk.red.bold("Result: FAIL — Critical severity findings detected."));
+        process.exit(1);
+    } else if (severityCounts.High > 0) {
+        console.log(chalk.yellow.bold("Result: WARN — High severity findings detected."));
+        process.exit(0);
+    } else {
+        console.log(chalk.green.bold("Result: PASS — no Critical findings."));
+        process.exit(0);
+    }
+}
+
+if (dashboardUrl) {
+    fetch(dashboardUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reportData),
+    })
+        .then((res) => {
+            if (!res.ok) throw new Error(`Server responded ${res.status}`);
+            return res.json();
+        })
+        .then((data) => {
+            console.log(chalk.green(`Report uploaded to dashboard (id: ${data.id}).`));
+            exitWithResult();
+        })
+        .catch((err) => {
+            console.warn(`Could not upload to dashboard: ${err.message}`);
+            exitWithResult();
+        });
 } else {
-    console.log(chalk.green.bold("Result: PASS — no Critical findings."));
-    process.exit(0);
+    exitWithResult();
 }
