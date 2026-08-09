@@ -1,71 +1,562 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CompiLaw Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
-    .finding { border: 1px solid #ccc; border-radius: 6px; padding: 12px; margin-bottom: 10px; }
-    .Critical { border-left: 6px solid #b00020; }
-    .High { border-left: 6px solid #e65100; }
-    .Medium { border-left: 6px solid #f9a825; }
-    .Low { border-left: 6px solid #999; }
-    .report-row { cursor: pointer; padding: 10px; border-bottom: 1px solid #eee; }
-    .report-row:hover { background: #f5f5f5; }
-    #back { cursor: pointer; color: blue; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #f4f4f2;
+      --white:    #ffffff;
+      --border:   #e8e8e4;
+      --text:     #1a1a1a;
+      --muted:    #8a8a85;
+      --subtle:   #f0f0ec;
+
+      --critical: #d13030;
+      --critical-bg: #fdf0f0;
+      --critical-pill: #fce8e8;
+
+      --high:     #c45c00;
+      --high-bg:  #fdf5ee;
+      --high-pill:#fdebd8;
+
+      --medium:   #8a6800;
+      --medium-bg:#fdfbee;
+      --medium-pill:#faf3d0;
+
+      --low:      #5a5a55;
+      --low-bg:   #f8f8f6;
+      --low-pill: #ebebе8;
+
+      --radius:   12px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Hero header ── */
+    .hero {
+      background: linear-gradient(135deg, #fde8d8 0%, #fce4d0 30%, #faf0e8 60%, #f4f4f2 100%);
+      padding: 36px 40px 32px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    /* ── Page body ── */
+    .body {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 40px 60px;
+    }
+
+    /* ── Section label ── */
+    .section-title {
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+
+    /* ── Main card ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-title { font-size: 1rem; font-weight: 700; flex: 1; }
+
+    .filter-tabs {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      font-size: .75rem;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tab:hover { background: var(--subtle); color: var(--text); }
+    .tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+    .tab.active.critical { background: var(--critical); border-color: var(--critical); }
+    .tab.active.high     { background: var(--high);     border-color: var(--high); }
+    .tab.active.medium   { background: var(--medium);   border-color: var(--medium); }
+
+    /* ── Table header ── */
+    .table-head {
+      display: grid;
+      grid-template-columns: 160px 1fr 110px 130px;
+      padding: 10px 24px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+    .table-head span {
+      font-size: .72rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    /* ── Finding rows ── */
+    .finding-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 110px 130px;
+      align-items: start;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      transition: background .12s;
+    }
+    .finding-row:last-child { border-bottom: none; }
+    .finding-row:hover { background: #fafaf8; }
+
+    .sev-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: .75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      width: fit-content;
+    }
+    .sev-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+    .sev-pill.Critical { background: var(--critical-pill); color: var(--critical); }
+    .sev-pill.Critical::before { background: var(--critical); }
+    .sev-pill.High     { background: var(--high-pill);     color: var(--high); }
+    .sev-pill.High::before     { background: var(--high); }
+    .sev-pill.Medium   { background: var(--medium-pill);   color: var(--medium); }
+    .sev-pill.Medium::before   { background: var(--medium); }
+    .sev-pill.Low      { background: var(--low-pill);      color: var(--low); }
+    .sev-pill.Low::before      { background: var(--low); }
+
+    .finding-main { min-width: 0; }
+    .finding-category { font-size: .85rem; font-weight: 600; margin-bottom: 2px; }
+    .finding-location {
+      font-size: .72rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .finding-snippet {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: .72rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      margin-top: 5px;
+      color: #555;
+      white-space: pre;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .finding-citation { font-size: .7rem; color: var(--muted); margin-top: 4px; }
+
+    .status-select {
+      appearance: none;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: .75rem;
+      font-family: inherit;
+      padding: 5px 26px 5px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      width: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8a85'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      transition: border-color .15s;
+    }
+    .status-select:hover { border-color: #bbb; }
+    .status-select:focus { outline: none; border-color: var(--text); }
+
+    /* ── Scan history rows ── */
+    .history-row {
+      display: grid;
+      grid-template-columns: 1fr 160px 52px 52px 52px 52px;
+      align-items: center;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      cursor: pointer;
+      transition: background .12s;
+    }
+    .history-row:last-child { border-bottom: none; }
+    .history-row:hover { background: #fafaf8; }
+
+    .history-folder { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-date   { font-size: .75rem; color: var(--muted); }
+
+    .num-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 24px;
+      border-radius: 6px;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+    .num-badge.critical { background: var(--critical-pill); color: var(--critical); }
+    .num-badge.high     { background: var(--high-pill);     color: var(--high); }
+    .num-badge.medium   { background: var(--medium-pill);   color: var(--medium); }
+    .num-badge.total    { background: var(--subtle);        color: var(--text); }
+
+    /* ── Stats strip ── */
+    .stats-strip {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-item {
+      flex: 1;
+      padding: 16px 20px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num  { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .stat-lbl  { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+
+    .stat-item.total    .stat-num { color: var(--text); }
+    .stat-item.critical .stat-num { color: var(--critical); }
+    .stat-item.high     .stat-num { color: var(--high); }
+    .stat-item.medium   .stat-num { color: var(--medium); }
+    .stat-item.low      .stat-num { color: var(--low); }
+
+    /* ── Back / actions ── */
+    .top-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .back-btn:hover { color: var(--text); border-color: #ccc; }
+
+    .csv-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      transition: all .15s;
+      margin-left: auto;
+    }
+    .csv-btn:hover { background: var(--subtle); border-color: #ccc; }
+
+    .page-heading { font-size: 1rem; font-weight: 700; }
+
+    /* ── Empty ── */
+    .empty {
+      padding: 52px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+    .empty .e-icon { font-size: 2rem; margin-bottom: 10px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--text);
+      color: #fff;
+      border-radius: var(--radius-sm);
+      padding: 10px 18px;
+      font-size: .8rem;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+      z-index: 999;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
-  <h1>CompiLaw Dashboard</h1>
-  <div id="app"></div>
 
-  <script>
-    const app = document.getElementById("app");
-
-    function showList() {
-      fetch("/api/reports").then(r => r.json()).then(reports => {
-        app.innerHTML = "<h2>Scan history</h2>" + reports.map(r => `
-          <div class="report-row" onclick="showReport(${r.id})">
-            #${r.id} — ${r.scanned_folder} — ${new Date(r.generated_at).toLocaleString()}
-            — ${r.total_findings} findings (Critical: ${r.critical}, High: ${r.high})
-          </div>
-        `).join("");
-      });
-    }
-
-    function showReport(id) {
-      fetch(`/api/reports/${id}`).then(r => r.json()).then(report => {
-        app.innerHTML = `
-          <div id="back" onclick="showList()">&larr; Back to history</div>
-          <h2>Report #${report.id} — ${report.scanned_folder}</h2>
-          <a href="/api/reports/${report.id}/csv" download>Download as CSV</a><br><br>
-          <p>Total: ${report.total_findings} | Critical: ${report.critical} | High: ${report.high} | Medium: ${report.medium} | Low: ${report.low}</p>
-          ${report.findings.map(f => `
-  <div class="finding ${f.severity}" id="finding-${f.id}">
-    <strong>${f.category}</strong> (${f.severity}) — ${f.file}:${f.line}
-    <br><code>${f.snippet}</code>
-    ${f.citation ? `<br><small>${f.citation}</small>` : ""}
-    <br>
-    <select onchange="updateStatus(${f.id}, this.value)">
-      <option value="Open" ${f.status === "Open" ? "selected" : ""}>Open</option>
-      <option value="Fixed" ${f.status === "Fixed" ? "selected" : ""}>Fixed</option>
-      <option value="Accepted Risk" ${f.status === "Accepted Risk" ? "selected" : ""}>Accepted Risk</option>
-      <option value="Needs Lawyer Review" ${f.status === "Needs Lawyer Review" ? "selected" : ""}>Needs Lawyer Review</option>
-    </select>
+  <div class="hero">
+    <h1>CompiLaw Dashboard</h1>
+    <p>DPDP Act 2023 compliance scan results</p>
   </div>
-`).join("")}
-        `;
-      });
-    }
 
-    function updateStatus(findingId, status) {
-  fetch(`/api/findings/${findingId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
-  });
-}
+  <div class="body">
+    <div id="app"></div>
+  </div>
 
-    showList();
-  </script>
+  <div id="toast"></div>
+
+<script>
+  const app  = document.getElementById("app");
+  const toastEl = document.getElementById("toast");
+  let toastTimer;
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+  }
+
+  function esc(s) {
+    return String(s ?? "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function timeAgo(iso) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1)  return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d === 1) return "yesterday";
+    if (d < 7)  return `${d} days ago`;
+    return new Date(iso).toLocaleDateString();
+  }
+
+  /* ─────────── HISTORY LIST ─────────── */
+  function showList() {
+    app.innerHTML = `<div class="empty"><div class="e-icon">⏳</div>Loading…</div>`;
+    fetch("/api/reports").then(r => r.json()).then(reports => {
+
+      if (!reports.length) {
+        app.innerHTML = `<div class="empty"><div class="e-icon">📭</div>No scans yet. Run <code>compilaw ./project --upload</code> to get started.</div>`;
+        return;
+      }
+
+      const rows = reports.map((r, i) => `
+        <div class="history-row" onclick="showReport(${r.id})"
+             role="button" tabindex="0" onkeydown="if(event.key==='Enter')showReport(${r.id})">
+          <div>
+            <div class="history-folder">Scan ${reports.length - i}</div>
+            <div class="history-date">${new Date(r.generated_at).toLocaleString()}</div>
+          </div>
+          <span class="history-date">${timeAgo(r.generated_at)}</span>
+          <span class="num-badge critical">${r.critical}</span>
+          <span class="num-badge high">${r.high}</span>
+          <span class="num-badge medium">${r.medium}</span>
+          <span class="num-badge total">${r.total_findings}</span>
+        </div>`).join("");
+
+      app.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Scan History</span>
+            <div class="filter-tabs" style="font-size:.72rem;color:var(--muted);gap:16px;display:flex;align-items:center">
+              <span>🔴 Critical</span><span>🟠 High</span><span>🟡 Medium</span><span>Σ Total</span>
+            </div>
+          </div>
+          <div class="history-row" style="background:var(--bg);cursor:default;padding:8px 24px">
+            <span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Folder</span>
+            <span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">When</span>
+            <span style="font-size:.72rem;color:var(--muted)">Crit</span>
+            <span style="font-size:.72rem;color:var(--muted)">High</span>
+            <span style="font-size:.72rem;color:var(--muted)">Med</span>
+            <span style="font-size:.72rem;color:var(--muted)">All</span>
+          </div>
+          ${rows}
+        </div>`;
+    });
+  }
+
+  /* ─────────── REPORT DETAIL ─────────── */
+  let activeFilter = "All";
+
+  function showReport(id) {
+    app.innerHTML = `<div class="empty"><div class="e-icon">⏳</div>Loading report…</div>`;
+    fetch(`/api/reports/${id}`).then(r => r.json()).then(report => {
+      window._report = report;
+      activeFilter = "All";
+      renderReport(report);
+    });
+  }
+
+  function renderReport(report) {
+    const sevs = ["Critical","High","Medium","Low"];
+    const counts = {};
+    sevs.forEach(s => counts[s] = 0);
+    report.findings.forEach(f => counts[f.severity] = (counts[f.severity]||0)+1);
+
+    const visible = activeFilter === "All"
+      ? report.findings
+      : report.findings.filter(f => f.severity === activeFilter);
+
+    const tabs = ["All",...sevs].map(s => {
+      const cls = [
+        "tab",
+        activeFilter === s ? "active" : "",
+        s !== "All" ? s : ""
+      ].join(" ").trim();
+      const label = s === "All" ? `All · ${report.total_findings}` : `${s} · ${counts[s]}`;
+      return `<button class="${cls}" onclick="activeFilter='${s}';renderReport(window._report)">${label}</button>`;
+    }).join("");
+
+    const rows = visible.length === 0
+      ? `<div class="empty"><div class="e-icon">✅</div>No findings for this filter.</div>`
+      : visible.map(f => `
+        <div class="finding-row">
+          <span class="sev-pill ${esc(f.severity)}">${esc(f.severity)}</span>
+          <div class="finding-main">
+            <div class="finding-category">${esc(f.category)}</div>
+            <div class="finding-location">${esc(f.file)}:${f.line}</div>
+            <pre class="finding-snippet">${esc(f.snippet)}</pre>
+            ${f.citation ? `<div class="finding-citation">${esc(f.citation)}</div>` : ""}
+          </div>
+          <div style="padding-top:2px">
+            <select class="status-select" onchange="updateStatus(${f.id},this.value,this)">
+              ${["Open","Fixed","Accepted Risk","Needs Lawyer Review"].map(s =>
+                `<option value="${s}" ${f.status===s?"selected":""}>${s}</option>`
+              ).join("")}
+            </select>
+          </div>
+          <div style="font-size:.72rem;color:var(--muted);text-align:right;padding-top:4px">
+            ${f.confidence ? Math.round(f.confidence*100)+"% confidence" : ""}
+          </div>
+        </div>`).join("");
+
+    app.innerHTML = `
+      <div class="top-row">
+        <button class="back-btn" onclick="showList()">← Back</button>
+        <span class="page-heading">Report #${report.id} — ${esc(report.scanned_folder)}</span>
+        <a class="csv-btn" href="/api/reports/${report.id}/csv" download>↓ Export CSV</a>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="stats-strip">
+          <div class="stat-item total">
+            <span class="stat-num">${report.total_findings}</span>
+            <span class="stat-lbl">Total</span>
+          </div>
+          <div class="stat-item critical">
+            <span class="stat-num">${report.critical}</span>
+            <span class="stat-lbl">Critical</span>
+          </div>
+          <div class="stat-item high">
+            <span class="stat-num">${report.high}</span>
+            <span class="stat-lbl">High</span>
+          </div>
+          <div class="stat-item medium">
+            <span class="stat-num">${report.medium}</span>
+            <span class="stat-lbl">Medium</span>
+          </div>
+          <div class="stat-item low">
+            <span class="stat-num">${report.low}</span>
+            <span class="stat-lbl">Low</span>
+          </div>
+        </div>
+        <div style="padding:10px 20px;border-bottom:1px solid var(--border);font-size:.78rem;color:var(--muted)">
+          Scanned ${new Date(report.generated_at).toLocaleString()}
+        </div>
+        <div class="card-header" style="border-bottom:none;padding-bottom:0">
+          <span class="card-title">Findings</span>
+          <div class="filter-tabs">${tabs}</div>
+        </div>
+        <div class="table-head">
+          <span>Severity</span>
+          <span>Finding</span>
+          <span>Status</span>
+          <span style="text-align:right">Confidence</span>
+        </div>
+        ${rows}
+      </div>`;
+  }
+
+  /* ─────────── STATUS UPDATE ─────────── */
+  function updateStatus(id, status, el) {
+    fetch(`/api/findings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    }).then(r => {
+      if (!r.ok) throw new Error();
+      if (window._report) {
+        const f = window._report.findings.find(x => x.id === id);
+        if (f) f.status = status;
+      }
+      toast(`Status → ${status}`);
+    }).catch(() => toast("Failed to update"));
+  }
+
+  showList();
+</script>
 </body>
 </html>

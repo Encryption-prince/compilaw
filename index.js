@@ -236,7 +236,6 @@ function buildReport(findings, context, dependencyResults) {
 }
 
 const reportText = buildReport(filteredFindings, context, dependencyResults);
-console.log(reportText);
 
 const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
 for (const finding of filteredFindings) {
@@ -293,13 +292,16 @@ if (dashboardUrl) {
             return res.json();
         })
         .then((data) => {
-            console.log(chalk.green(`Report uploaded to dashboard (id: ${data.id}).`));
+            console.log(chalk.bold(`\nScan complete — ${filteredFindings.length} findings (Critical: ${severityCounts.Critical}, High: ${severityCounts.High}, Medium: ${severityCounts.Medium}, Low: ${severityCounts.Low})`));
+            console.log(chalk.green(`✓ Uploaded to dashboard (report #${data.id}) — view details at http://localhost:3000\n`));
             exitWithResult();
         })
         .catch((err) => {
             console.warn(`Could not upload to dashboard: ${err.message}`);
+            console.log(reportText); // fall back to full output if upload failed
             exitWithResult();
         });
 } else {
+    console.log(reportText);
     exitWithResult();
 }
