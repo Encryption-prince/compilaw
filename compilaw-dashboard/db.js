@@ -24,6 +24,8 @@ db.exec(`
     snippet TEXT,
     severity TEXT,
     citation TEXT,
+    rule_text TEXT,
+    remediation TEXT,
     confidence REAL,
     status TEXT DEFAULT 'Open',
     FOREIGN KEY (report_id) REFERENCES reports(id)
@@ -50,8 +52,8 @@ function insertReport(reportData) {
   const reportId = result.lastInsertRowid;
 
   const insertFindingStmt = db.prepare(`
-    INSERT INTO findings (report_id, file, line, category, snippet, severity, citation, confidence)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO findings (report_id, file, line, category, snippet, severity, citation, rule_text, remediation, confidence)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (const f of reportData.findings) {
@@ -63,6 +65,8 @@ function insertReport(reportData) {
       f.snippet,
       f.rule ? f.rule.severity : "Low",
       f.rule ? f.rule.citation : null,
+      f.rule ? f.rule.ruleText : null,
+      f.rule ? f.rule.remediation : null,
       f.confidence || null
     );
   }

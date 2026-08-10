@@ -43,9 +43,9 @@ app.get("/api/reports/:id/csv", (req, res) => {
     const report = getReportById(req.params.id);
     if (!report) return res.status(404).send("Not found");
 
-    let csv = "File,Line,Category,Severity,Citation,Status,Snippet\n";
+    let csv = "File,Line,Category,Severity,Citation,Description,Suggested Action,Status,Snippet\n";
     for (const f of report.findings) {
-        const row = [f.file, f.line, f.category, f.severity, f.citation || "", f.status, f.snippet]
+        const row = [f.file, f.line, f.category, f.severity, f.citation || "", f.rule_text || "", f.remediation || "", f.status, f.snippet]
             .map((val) => `"${String(val).replace(/"/g, '""')}"`)
             .join(",");
         csv += row + "\n";

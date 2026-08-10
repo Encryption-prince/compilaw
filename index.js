@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const chalk = require("chalk");
@@ -71,6 +72,14 @@ const config = loadConfig(targetFolder);
 const ALLOWED_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx", ".py"];
 const SKIP_FOLDERS = ["node_modules", ".git", ...config.ignoreFolders];
 const EXCLUDE_PATTERNS = [/console\.(log|error|warn|info)/i];
+
+const REPORTS_DIR = path.join(os.homedir(), ".compilaw", "reports");
+if (!fs.existsSync(REPORTS_DIR)) {
+    fs.mkdirSync(REPORTS_DIR, { recursive: true });
+}
+const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+const reportTxtPath  = path.join(REPORTS_DIR, `compilaw-report-${timestamp}.txt`);
+const reportJsonPath = path.join(REPORTS_DIR, `compilaw-report-${timestamp}.json`);
 
 const findings = [];
 let filesScanned = 0;
@@ -250,8 +259,8 @@ console.log(chalk.yellow(`  Medium:   ${severityCounts.Medium}`));
 console.log(chalk.gray(`  Low:      ${severityCounts.Low}`));
 console.log("");
 
-fs.writeFileSync("./compilaw-report.txt", reportText);
-console.log("Report saved to compilaw-report.txt");
+fs.writeFileSync(reportTxtPath, reportText);
+console.log(`Report saved to ${reportTxtPath}`);
 
 const reportData = {
     generatedAt: new Date().toISOString(),
@@ -263,8 +272,8 @@ const reportData = {
     dependencies: dependencyResults,
 };
 
-fs.writeFileSync("./compilaw-report.json", JSON.stringify(reportData, null, 2));
-console.log("Machine-readable report saved to compilaw-report.json");
+fs.writeFileSync(reportJsonPath, JSON.stringify(reportData, null, 2));
+console.log(`Machine-readable report saved to ${reportJsonPath}`);
 
 const dashboardUrl = process.argv.includes("--upload") ? "http://localhost:3000/api/report" : null;
 

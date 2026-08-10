@@ -66,6 +66,18 @@
       font-size: .9rem;
     }
 
+    .hero .disclaimer {
+      margin-top: 12px;
+      font-size: .78rem;
+      color: var(--muted);
+      background: rgba(255,255,255,0.55);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      max-width: 680px;
+      line-height: 1.6;
+    }
+
     /* ── Page body ── */
     .body {
       max-width: 960px;
@@ -199,6 +211,9 @@
       max-width: 100%;
     }
     .finding-citation { font-size: .7rem; color: var(--muted); margin-top: 4px; }
+    .finding-rule-text { font-size: .75rem; color: var(--text); margin-top: 6px; line-height: 1.5; }
+    .finding-remediation { font-size: .75rem; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+    .finding-remediation strong { color: var(--text); font-weight: 600; }
 
     .status-select {
       appearance: none;
@@ -354,6 +369,7 @@
   <div class="hero">
     <h1>CompiLaw Dashboard</h1>
     <p>DPDP Act 2023 compliance scan results</p>
+    <p class="disclaimer">⚠️ This is not legal advice. CompiLaw is a technical aid. Every citation should be verified against the official DPDP Act/Rules text and reviewed by a qualified lawyer before you act on it.</p>
   </div>
 
   <div class="body">
@@ -480,6 +496,8 @@
             <div class="finding-location">${esc(f.file)}:${f.line}</div>
             <pre class="finding-snippet">${esc(f.snippet)}</pre>
             ${f.citation ? `<div class="finding-citation">${esc(f.citation)}</div>` : ""}
+            ${f.rule_text ? `<div class="finding-rule-text">${esc(f.rule_text)}</div>` : ""}
+            ${f.remediation ? `<div class="finding-remediation"><strong>What to do:</strong> ${esc(f.remediation)}</div>` : ""}
           </div>
           <div style="padding-top:2px">
             <select class="status-select" onchange="updateStatus(${f.id},this.value,this)">
