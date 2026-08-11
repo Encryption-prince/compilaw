@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { scanJSFileWithAST } = require("../ast-scanner");
+const { scanJSFileWithAST } = require("../lib/ast-scanner");
 
 test("detects a declared email variable", () => {
     const results = scanJSFileWithAST("fake.js", `const userEmail = "test@example.com";`);

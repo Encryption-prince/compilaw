@@ -1,33 +1,32 @@
 {
-  "name": "compilaw-project-v1",
+  "name": "compilaw",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Automated legal & regulatory gap analysis for codebases (DPDP Act 2023 / Rules 2025)",
   "bin": {
-    "compilaw": "./index.js"
+    "compilaw": "./bin/compilaw.js"
   },
+  "main": "bin/compilaw.js",
   "scripts": {
     "test": "node --test tests/*.test.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@babel/parser": "^8.0.4",
-    "@babel/traverse": "^8.0.4",
-    "chalk": "^4.1.2",
-    "readline-sync": "^1.4.10"
+  "author": "Subham <subhammaity6827@gmail.com> (https://github.com/Encryption-prince)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Encryption-prince/compilaw"
   },
+  "license": "MIT",
   "files": [
-    "index.js",
-    "ast-scanner.js",
-    "python-ast-scanner.js",
-    "py_ast_helper.py",
-    "patterns.js",
-    "rules.js",
-    "questionnaire.js",
-    "dependency-scanner.js",
-    "config-loader.js",
+    "bin",
+    "lib",
+    "dashboard",
     "README.md"
-  ]
+  ],
+  "dependencies": {
+    "@babel/parser": "8.0.4",
+    "@babel/traverse": "8.0.4",
+    "chalk": "4.1.2",
+    "express": "5.2.1",
+    "readline-sync": "1.4.10"
+  }
 }

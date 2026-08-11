@@ -1,6 +1,13 @@
 const { DatabaseSync } = require("node:sqlite");
+const os = require("os");
+const fs = require("fs");
+const path = require("path");
 
-const db = new DatabaseSync("compilaw.db");
+const DB_DIR = path.join(os.homedir(), ".compilaw");
+if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+}
+const db = new DatabaseSync(path.join(DB_DIR, "dashboard.db"));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS reports (

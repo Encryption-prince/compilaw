@@ -7,10 +7,10 @@ no data leaves your computer.
 
 ## Setup
 
-```bash
+\`\`\`bash
 npm install
 node server.js
-```
+\`\`\`
 
 Visit http://localhost:3000
 

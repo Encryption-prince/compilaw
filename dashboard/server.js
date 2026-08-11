@@ -1,11 +1,12 @@
 const express = require("express");
+const path = require("path");
 const { insertReport, getAllReports, getReportById, updateFindingStatus } = require("./db");
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json({ limit: "5mb" }));
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.post("/api/report", (req, res) => {
     const id = insertReport(req.body);

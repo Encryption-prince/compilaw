@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { matchPattern } = require("../patterns");
+const { matchPattern } = require("../lib/patterns");
 
 test("matches an email field name", () => {
     const result = matchPattern("userEmail");
