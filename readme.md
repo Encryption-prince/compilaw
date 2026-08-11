@@ -4,7 +4,7 @@
 ![Status](https://img.shields.io/badge/status-V1%20prototype-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
-![Made with](https://img.shields.io/badge/built%20with-JavaScript%20%26%20Python-yellow)
+![Made with](https://img.shields.io/badge/built%20with-JavaScript%20%26%20Python%20%26%20Java-yellow)
 
 **Automated legal & regulatory gap analysis for codebases.**
 *"Where compliance meets the codebase."*
