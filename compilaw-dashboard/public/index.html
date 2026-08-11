@@ -189,7 +189,16 @@
     .sev-pill.Low::before      { background: var(--low); }
 
     .finding-main { min-width: 0; }
-    .finding-category { font-size: .85rem; font-weight: 600; margin-bottom: 2px; }
+    .finding-category { font-size: .85rem; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .llm-badge {
+      font-size: .68rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 20px;
+      background: #ede9fe;
+      color: #6d28d9;
+      letter-spacing: .3px;
+    }
     .finding-location {
       font-size: .72rem;
       color: var(--muted);
@@ -492,7 +501,10 @@
         <div class="finding-row">
           <span class="sev-pill ${esc(f.severity)}">${esc(f.severity)}</span>
           <div class="finding-main">
-            <div class="finding-category">${esc(f.category)}</div>
+            <div class="finding-category">
+              ${esc(f.category)}
+              ${f.source === "llm" ? `<span class="llm-badge">LLM</span>` : ""}
+            </div>
             <div class="finding-location">${esc(f.file)}:${f.line}</div>
             <pre class="finding-snippet">${esc(f.snippet)}</pre>
             ${f.citation ? `<div class="finding-citation">${esc(f.citation)}</div>` : ""}
