@@ -18,11 +18,12 @@ test("flags a data flow to a suspicious function as external risk", () => {
     assert.strictEqual(flow.externalRisk, true);
 });
 
-test("does not flag console.log as a call site", () => {
+test("flags console.log with PII as a logging risk", () => {
     const code = `
     const userEmail = "test@example.com";
     console.log("debug", userEmail);
   `;
     const results = scanJSFileWithAST("fake.js", code);
-    assert.strictEqual(results.some((r) => r.type === "data-flow"), false);
+    const flow = results.find((r) => r.type === "data-flow" && r.subtype === "logging-risk");
+    assert.ok(flow, "should flag PII passed to console.log as a logging risk");
 });
