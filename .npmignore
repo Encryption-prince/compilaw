@@ -1,0 +1,18 @@
+# Dev and test
+tests/
+test-target/
+sample-code/
+.vscode/
+.kiro/
+
+# Compiled output / local state
+compilaw-report.txt
+compilaw-report.json
+*.db
+
+# Nested node_modules — dashboard deps are bundled from root node_modules
+dashboard/node_modules/
+
+# Misc
+*.log
+.DS_Store

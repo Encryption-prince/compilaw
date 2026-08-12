@@ -3,7 +3,7 @@
   "version": "1.2.0",
   "description": "Automated legal & regulatory gap analysis for codebases (DPDP Act 2023 / Rules 2025)",
   "bin": {
-    "compilaw": "./bin/compilaw.js"
+    "compilaw": "bin/compilaw.js"
   },
   "main": "bin/compilaw.js",
   "scripts": {
@@ -13,7 +13,7 @@
   "author": "Subham <subhammaity6827@gmail.com> (https://github.com/Encryption-prince)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Encryption-prince/compilaw"
+    "url": "git+https://github.com/Encryption-prince/compilaw.git"
   },
   "license": "MIT",
   "files": [
