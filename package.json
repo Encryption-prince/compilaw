@@ -1,6 +1,6 @@
 {
   "name": "compilaw",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Automated legal & regulatory gap analysis for codebases (DPDP Act 2023 / Rules 2025)",
   "bin": {
     "compilaw": "bin/compilaw.js"
