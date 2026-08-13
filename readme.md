@@ -1,17 +1,28 @@
 # CompiLaw
 
 ![Node](https://img.shields.io/badge/node-%3E%3D22.0-339933?logo=node.js&logoColor=white)
-![Status](https://img.shields.io/badge/status-V1%20prototype-orange)
+![npm](https://img.shields.io/npm/v/compilaw?color=cb3837&logo=npm)
+![Status](https://img.shields.io/badge/status-V1-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
-![Made with](https://img.shields.io/badge/built%20with-JavaScript%20%26%20Python%20%26%20Java-yellow)
 
-**Automated legal & regulatory gap analysis for codebases.**
+**Automated legal & regulatory gap analysis for codebases.**  
 *"Where compliance meets the codebase."*
 
-CompiLaw scans a software codebase, traces where personal data actually flows, and matches what it finds against India's **DPDP Act 2023 and DPDP Rules 2025** — producing a severity-ranked gap report with citations, so early-stage teams can spot compliance risk before a lawyer or regulator does.
+CompiLaw scans a software codebase, traces where personal data actually flows, and matches what it finds against India's **DPDP Act 2023 and DPDP Rules 2025** — producing a severity-ranked gap report with citations, so engineering teams can spot compliance risk before a lawyer or regulator does.
 
 > ⚠️ **This is not legal advice.** CompiLaw is a technical aid. Every citation should be verified against the official DPDP Act/Rules text and reviewed by a qualified lawyer before you act on it.
+
+---
+
+## Install
+
+```bash
+npm install -g compilaw@latest
+compilaw setup
+```
+
+`compilaw setup` checks whether Ollama is running, automatically pulls the LLM model it needs (`qwen2.5-coder:7b` — one-time download, a few GB), and checks for Python. Everything else works without Ollama — you only need it for `--deep-scan`.
 
 ---
 
@@ -25,82 +36,84 @@ CompiLaw installs as a single package with three subcommands:
 | `compilaw setup` | One-time check for Ollama, pulls the local LLM model, checks for Python |
 | `compilaw dashboard` | Starts a local web UI to browse scan history, track remediation, export CSV |
 
-Everything — scanner, dashboard, local LLM integration — ships in one install. No separate cloning or setup per component.
-
 ---
 
 ## Features
 
-- **Real AST-based detection**, not just keyword search — parses actual code structure for JS/TS (via Babel) and Python (via Python's own `ast` module), so a variable named `ipAddress` isn't confused with someone's home address.
-- **Optional local LLM semantic analysis** (`--deep-scan`) — runs entirely on your own machine via [Ollama](https://ollama.com), no code ever leaves your computer. Catches personal data that AST can't, since it reads code *meaning*, not just variable names (e.g. `const x = "user@example.com"` gets flagged correctly even though `x` matches no naming pattern). Includes shallow cross-file context (JS/TS only) — if a file imports another local file, that file's content is included so the model can reason about where data ends up (e.g. a function that calls `database.insert(...)`).
-- **Data-flow tracing** — detects not just *that* a PII field exists, but when it's passed into a function call that looks like it sends data externally (e.g. `analytics.track(userEmail)`), flagging that as a higher-priority finding.
-- **DPDP Act 2023 and DPDP Rules 2025 rule matching**, citations verified directly against the official Gazette text for both — not paraphrased secondary sources. LLM findings are grounded to this same fixed rule set — the model selects among pre-verified categories, it never invents a citation.
-- **Confidence scoring** on every finding, so you know which ones are near-certain vs. worth a second look.
-- **Business-context questionnaire** (user location, sector, minors' data) that adds targeted warnings — e.g. fintech-specific RBI flags, children's-data parental-consent reminders.
-- **Dependency & license scanning** — flags risky copyleft licenses (GPL/AGPL family) in your dependency tree; optional `--install-deps` flag for accurate license data on uninstalled packages (opt-in, since it executes the target project's install scripts).
-- **Configurable per-project** via a `.compilawrc.json` file — ignore folders or specific finding categories without touching source code.
-- **CI-friendly** — meaningful exit codes (`1` on Critical findings) and colored terminal output.
-- **Dual output**: human-readable `.txt` report and machine-readable `.json`, saved to `~/.compilaw/reports/` (never inside the folder you're scanning), or push straight to the dashboard with `--upload`.
-- **Dashboard**: scan history, per-finding status tracking (Open / Fixed / Accepted Risk / Needs Lawyer Review), CSV export for sharing with counsel, AST vs. LLM provenance badges. Runs locally, binds to `localhost` only — nothing leaves your machine.
+### PII detection (AST-based, not keyword search)
+Parses actual code structure for JS/TS (via Babel) and Python (via Python's own `ast` module). Detects PII across 15 categories including:
 
----
+- Contact & identity: email, phone, full name, date of birth, address
+- Government IDs: Aadhaar, PAN, passport, voter ID, driving licence, tax ID
+- Credentials: password, auth tokens, API keys, session IDs
+- Financial: bank account, IFSC, card number, CVV, UPI, IBAN
+- Health, biometrics, location, device identifiers, demographics, employment
 
-## Understanding confidence scores
+### Deep data-flow tracking
+Not just *that* a PII field exists — but *where it goes*:
+- **Destructuring**: `const { email, phone } = req.body`
+- **Object spreads**: `sendgrid.send({ ...userData })` — tracks PII carried inside objects
+- **PII in HTTP responses**: `res.json(user)` flagged for response filtering
+- **PII in logs**: `console.log(email)` is a finding — one of the most common real-world leaks
+- **Destructured function params**: `function save({ email, phone }) {}`
 
-Every finding carries a confidence score (0–100%) reflecting how likely it is to be a genuine compliance-relevant match, not a false positive.
+### Consent surface detection (new)
+After scanning, CompiLaw checks whether the codebase has any consent mechanism at all. If it finds PII collection but zero consent surface — that's a **Critical** finding. Also checks for notice-before-consent (DPDP Section 5 requires notice to precede consent).
 
-| Score range | Meaning | Example |
-|---|---|---|
-| **85–90%** | Very reliable — this category is rarely a false positive | `password`, `dateOfBirth`, `aadhaar` |
-| **70–84%** | Reliable, but some ambiguity possible | `email`, `phone`, `latitude` |
-| **65%** | LLM semantic finding (`--deep-scan`) — caught by meaning, not name, but non-deterministic and heuristic | `const x = "user@example.com"` |
-| **55–69%** | Moderate — worth a manual look, more prone to false matches | `fullName`, `address` (network-address terms are filtered, but ambiguity remains), `health` |
-| **50–54%** | Data-flow findings (a PII variable passed into a function call) | Heuristic — guesses whether a call looks "external" (e.g. `analytics.track()`) based on the function name, not certainty |
+### Infrastructure & config scanning (new)
+Seven infrastructure checks that run on every JS/TS file:
 
-**Rule of thumb:** treat anything under 70% as a prompt to check the actual code, not as a confirmed issue. Regex-fallback findings (used when AST parsing isn't available, e.g. Python without an installed interpreter) are automatically scored 20% lower than the same category detected via AST, since fallback matching is line-based text search, not real code structure.
+| Check | Severity |
+|---|---|
+| Cookie without `httpOnly: true` | High |
+| Cookie without `secure: true` | High |
+| Cookie without `sameSite` | Medium |
+| Database connection without SSL/TLS | Critical |
+| Hardcoded secret or credential in source | Critical |
+| PII passed directly to `console.log/error` | High |
+| Auth route without rate limiting | High |
+| No data retention/expiry scheduling | Medium |
+| Wildcard CORS (`origin: '*'`) | Medium |
 
----
+### Optional local LLM semantic analysis (`--deep-scan`)
+Runs entirely on your own machine via [Ollama](https://ollama.com) — no code ever leaves your computer. Catches personal data that AST can't, because it reads code *meaning*, not just variable names. Includes shallow cross-file context for JS/TS — if a file imports another local file, that content is included so the model can reason about where data ends up. LLM findings are deduplicated against AST results and marked with an `LLM` badge in the dashboard.
 
-## Setup
+### DPDP Act 2023 & Rules 2025 rule matching
+Citations verified directly against the official Gazette text. Every finding maps to a specific Act section and Rule with plain-English summary and a concrete remediation step. The LLM is grounded to this same fixed rule set — it never invents a citation.
 
-### Prerequisites
-- Node.js 22+ (built-in `node:sqlite` support requires this)
-- Python 3 (optional — enables real AST parsing for `.py` files; falls back to regex matching if not found)
-- [Ollama](https://ollama.com/download) (optional — only needed for `--deep-scan`; must be installed manually, one time)
-
-### Install
-
-```bash
-npm install -g compilaw
-compilaw setup
-```
-
-`compilaw setup` checks whether Ollama is running, automatically pulls the model it needs (`qwen2.5-coder:7b`, a few GB — one-time download), and checks for Python. If Ollama isn't installed yet, it prints a download link and instructions rather than failing — you only need `--deep-scan` if you actually want the local LLM pass; everything else works without it.
-
-That's it — no cloning, no separate dashboard install.
+### Other
+- **Confidence scoring** on every finding (50–90%)
+- **Business-context questionnaire** — adds targeted warnings for fintech (RBI flags), health sector, and minors' data (parental consent)
+- **Dependency & license scanning** — flags risky copyleft licenses (GPL/AGPL family)
+- **CI-friendly** — exit code `1` on Critical findings, `0` otherwise
+- **Configurable** via `.compilawrc.json` in the target folder
+- **Timestamped reports** saved to `~/.compilaw/reports/` — never inside the scanned folder
 
 ---
 
 ## Usage
 
 ```bash
-# Scan a folder, print a full report to the terminal
+# Scan a folder
 compilaw <folder-path>
 
-# Scan with local LLM semantic analysis (requires Ollama + setup above)
+# Scan with local LLM semantic analysis (requires Ollama + compilaw setup)
 compilaw <folder-path> --deep-scan
 
-# Scan and push the report to the dashboard instead of printing everything
+# Scan and push results to the dashboard
 compilaw <folder-path> --upload
 
-# Scan and also get accurate dependency license data (only on trusted code —
-# this runs "npm install" in the target folder)
+# Scan and install dependencies first for accurate license data
+# (only use on code you trust — this runs npm install in the target folder)
 compilaw <folder-path> --install-deps
 
-# Start the local dashboard (run from anywhere)
+# Start the local dashboard
 compilaw dashboard
 
-# Usage help
+# Run first-time setup (Ollama, model pull, Python check)
+compilaw setup
+
+# Help
 compilaw --help
 ```
 
@@ -110,19 +123,48 @@ Flags can be combined:
 compilaw ./my-project --deep-scan --upload
 ```
 
-### Example
-Scan complete — 9 findings (Critical: 0, High: 7, Medium: 2, Low: 0)
+### Example output
+
+```
+Scan complete — 23 findings (Critical: 6, High: 12, Medium: 5, Low: 0)
 ✓ Uploaded to dashboard (report #3) — view details at http://localhost:3000
+```
+
+---
+
+## Dashboard
+
+Start it with `compilaw dashboard`, then open `http://localhost:3000`.
+
+- Browse scan history
+- Per-finding status tracking: **Open**, **Fixed**, **Accepted Risk**, **Needs Lawyer Review**
+- Filter findings by severity
+- Rule text and remediation shown inline on each finding
+- `LLM` badge on findings detected by the local model
+- CSV export (includes Description and Suggested Action columns for sharing with counsel)
+
+The dashboard binds to `localhost` only — nothing leaves your machine.
+
+---
+
+## Understanding confidence scores
+
+| Score | Meaning | Example |
+|---|---|---|
+| **85–90%** | Very reliable | `password`, `aadhaar`, `dateOfBirth` |
+| **70–84%** | Reliable, some ambiguity possible | `email`, `phone`, `latitude` |
+| **75%** | Config/infrastructure risk (pattern-matched) | Hardcoded secret, insecure cookie |
+| **65%** | LLM semantic finding — caught by meaning, not name | `const x = "user@example.com"` |
+| **55–69%** | Moderate — worth a manual check | `fullName`, `address`, `health` |
+| **50–54%** | Data-flow heuristic | PII variable passed into a suspicious call |
+
+Treat anything under 70% as a prompt to check the actual code, not a confirmed issue. Regex-fallback findings (used when AST parsing isn't available) are scored 20% lower than the AST equivalent.
 
 ---
 
 ## Configuration
 
-Place a file named exactly `.compilawrc.json` **inside the folder you're scanning** (not wherever CompiLaw itself is installed). CompiLaw reads it automatically — no flag needed.
-
-If no config file is found, CompiLaw scans everything with no exclusions (the default).
-
-### Full example
+Place `.compilawrc.json` **inside the folder you're scanning**:
 
 ```json
 {
@@ -131,61 +173,62 @@ If no config file is found, CompiLaw scans everything with no exclusions (the de
 }
 ```
 
-### Options
-
 | Key | Type | Default | What it does |
 |---|---|---|---|
-| `ignoreFolders` | array of strings | `[]` | Folder *names* (not paths) to skip entirely during the scan, in addition to the always-skipped `node_modules` and `.git`. Matches by exact folder name at any depth. |
-| `ignoreCategories` | array of strings | `[]` | Finding categories to exclude from the final report entirely. Must exactly match a category name — see the full list below. |
+| `ignoreFolders` | string[] | `[]` | Folder names to skip at any depth (in addition to `node_modules` and `.git`) |
+| `ignoreCategories` | string[] | `[]` | Finding categories to exclude from the final report |
 
-### Valid category names for `ignoreCategories`
-Email field
-Phone number field
-Full name field
-Date of birth field
-Address field
-Government ID field
-Password field
-Financial/bank field
-Health field
-Biometric field
-Location field
+### Valid `ignoreCategories` values
 
-### Common setup mistakes
-
-- **Wrong location** — the file must be inside the *target* folder you're scanning (e.g. `./my-project/.compilawrc.json`), not wherever CompiLaw is installed.
-- **Hidden file-extension issue on Windows** — when creating the file, double check it's not accidentally saved as `.compilawrc.json.txt`. Windows Explorer sometimes hides extensions by default; VS Code's file explorer shows the true name and is the more reliable place to check.
-- **Invalid JSON** — if the file can't be parsed, CompiLaw prints a warning and falls back to scanning with no exclusions, rather than failing the whole scan.
+```
+Email field               Phone number field        Full name field
+Date of birth field       Address field             Government ID field
+Password field            Auth token field          Financial/bank field
+Health field              Biometric field           Location field
+Device identifier field   Employment field          Demographic field
+Missing consent mechanism Insecure cookie configuration
+Unencrypted database connection   Hardcoded secret / credential
+PII in error logs         Missing rate limiting on auth endpoint
+No data retention policy detected  Overly permissive CORS
+```
 
 ---
 
-## Known limitations (honest, by design)
+## Prerequisites
 
-- **Name-based AST detection has real limits** even with the exclusion filtering built in — `--deep-scan` closes some of this gap but is non-deterministic and slower.
-- **LLM cross-file context is JS/TS only** — Python files don't yet get imported-file context, even with `--deep-scan` on.
-- **Data-flow tracing is single-file only** for both AST and LLM passes — it won't follow a variable into a function defined in a completely separate module chain beyond one level of local imports.
-- **Dependency scanning** reads the target folder's own `package.json`/`node_modules`; use `--install-deps` for accurate license data on packages not already installed there.
-- **The DPDP knowledge base is a simplified starting point**, verified against primary Gazette text but not a substitute for a lawyer's review of your specific business.
-- **No login/auth on the dashboard** — by design, since it's meant to run locally, bound to `localhost` only. Don't expose it to a network or the internet without adding proper authentication first.
+- **Node.js 22+** — required (uses built-in `node:sqlite`)
+- **Python 3** — optional, enables real AST parsing for `.py` files; falls back to regex if not found
+- **[Ollama](https://ollama.com/download)** — optional, only needed for `--deep-scan`
+
+---
+
+## Known limitations
+
+- **Name-based detection has limits** — `--deep-scan` closes some of this gap but is non-deterministic
+- **LLM cross-file context is JS/TS only** — Python files don't get imported-file context
+- **Data-flow tracing is single-file** — won't follow a variable across more than one level of local imports
+- **Dependency scanning** reads the target folder's own `package.json` / `node_modules`
+- **No auth on the dashboard** — by design, local only; don't expose it to a network without adding authentication
+- **DPDP knowledge base is a simplified starting point** — verified against primary Gazette text but not a substitute for legal review
 
 ---
 
 ## Troubleshooting
 
-**`compilaw setup` says Ollama isn't detected**
-Install it from [ollama.com/download](https://ollama.com/download), make sure it's running (check your system tray), then re-run `compilaw setup`.
+**`compilaw setup` says Ollama isn't detected**  
+Install from [ollama.com/download](https://ollama.com/download), make sure it's running, then re-run `compilaw setup`.
 
-**`--deep-scan` runs but finds nothing new / seems to hang**
-The first run after `compilaw setup` can be slow while the model loads into GPU memory. Subsequent runs are faster. If it hangs indefinitely, confirm Ollama is running: `curl http://localhost:11434/api/tags`.
+**`--deep-scan` seems to hang**  
+First run after setup can be slow while the model loads into GPU/CPU memory. Confirm Ollama is running: `curl http://localhost:11434/api/tags`.
 
-**Python files fall back to regex instead of AST parsing**
-CompiLaw looks for `python3` or `python` on your system PATH. If neither is found, `.py` files use the regex fallback automatically — not an error, just reduced accuracy for Python specifically.
+**Python files use regex fallback instead of AST**  
+CompiLaw looks for `python3` or `python` on PATH. If neither is found, `.py` files fall back to regex automatically — not an error.
 
-**`compilaw dashboard` shows an `ExperimentalWarning: SQLite is an experimental feature` message**
-Expected and harmless — CompiLaw uses Node's built-in `node:sqlite`, still marked experimental as of Node 22.x but stable enough for this use case.
+**`ExperimentalWarning: SQLite is an experimental feature`**  
+Expected and harmless — uses Node's built-in `node:sqlite`, still marked experimental in Node 22.x.
 
-**CLI reports "Could not upload to dashboard"**
-The dashboard isn't running. Start it with `compilaw dashboard` in another terminal before using `--upload`. If upload fails, CompiLaw automatically falls back to printing the full report instead of losing results.
+**"Could not upload to dashboard"**  
+The dashboard isn't running. Start it with `compilaw dashboard` in another terminal first. If upload fails, CompiLaw prints the full report as a fallback.
 
 ---
 
@@ -195,7 +238,7 @@ The dashboard isn't running. Start it with `compilaw dashboard` in another termi
 - [ ] GDPR and other jurisdiction modules
 - [ ] GitHub App integration (auto-scan on PRs)
 - [ ] Sector-specific overlays (RBI for fintech, health-data rules)
-- [ ] Multi-user support for the dashboard, if this ever moves beyond local/personal use
+- [ ] Multi-user dashboard support
 
 ---
 
